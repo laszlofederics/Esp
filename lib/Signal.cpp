@@ -2,20 +2,20 @@
 /* *************     Configuration settings                ****************** */
 /* ************************************************************************** */
 
-#define ENABLE_DEBUG
+//#define ENABLE_DEBUG
 
 /* *************     End configuration settings           ******************* */
 
-
-#include <osapi.h>
 
 #include "Signal.h"
 
 using namespace Esp8266Base;
 
 extern "C" {
-  #include "user_interface.h"
-  extern int ets_uart_printf(const char *fmt, ...);
+  #include <user_interface.h>
+  #include <osapi.h>
+  #include <mem.h>
+  #include "ets_decl.h"
 }
 
 #ifdef ENABLE_DEBUG
@@ -53,8 +53,9 @@ Signal::Signal(const char* strSignalName)
 
 void Signal::emit(void* param)
 {
-	debug("%p >>> emit(), time: %d\n", this, system_get_time());
+	debug("%p >>> emit()\n", this);
 
+	bool bOnlyDirectConnections = true;
 	for (int i = 0; i < MAX_NR_OF_SIGNAL_SLOT_CONNECTIONS; ++i)
 	{
 		if (s_listConnections[i].m_Signal == this)
@@ -68,8 +69,22 @@ void Signal::emit(void* param)
 			{
 				// the slot will be invoked later
 				invokeSlotQueued(s_listConnections[i].m_Slot, param);
+				bOnlyDirectConnections = false;
 			}
 		}
+	}
+
+	if (bOnlyDirectConnections)
+	{
+		// if there were only direct connections, then we can release the memory of param now
+		if (NULL != param)
+		{
+			os_free(param);
+		}
+	}
+	else
+	{
+		// if there were Queued connections too, then param can be freed after the last slot has been called
 	}
 
 	debug("%p <<< emit()\n", this);
@@ -91,9 +106,24 @@ struct InvokeData
 InvokeData g_arrayInvokeData[MAX_NR_OF_QUEUED_SIGNALS];
 os_event_t g_eventQueue[MAX_NR_OF_QUEUED_SIGNALS];
 
+
+bool isParameterQueuedForOtherSlots(int i, void* param)
+{
+  bool bUsed = false;
+  for (int j = 0; j < MAX_NR_OF_QUEUED_SIGNALS && !bUsed; ++j)
+  {
+	  if (i != j && g_arrayInvokeData[j].pParameter == param)
+	  {
+		  bUsed = true;
+	  }
+  }
+  return bUsed;
+}
+
+
 void taskInvokeSlot(os_event_t *e)
 {
-	debug(">>> taskInvokeSlot(), time: %d\n", system_get_time());
+	debug(">>> taskInvokeSlot()\n");
 
 	if (INVOKE_SLOT == e->sig)
 	{
@@ -102,6 +132,18 @@ void taskInvokeSlot(os_event_t *e)
 		{
 			g_arrayInvokeData[i].functionSlot(g_arrayInvokeData[i].pParameter);
 			g_arrayInvokeData[i].bUsed = false;
+			if (NULL != g_arrayInvokeData[i].pParameter)
+			{
+				if (isParameterQueuedForOtherSlots(i, g_arrayInvokeData[i].pParameter))
+				{
+					g_arrayInvokeData[i].pParameter = NULL;
+				}
+				else
+				{
+					os_free(g_arrayInvokeData[i].pParameter);
+					g_arrayInvokeData[i].pParameter = NULL;
+				}
+			}
 		}
 		else
 		{
@@ -118,15 +160,15 @@ void taskInvokeSlot(os_event_t *e)
 
 bool Signal::startInvokeTask()
 {
-	debug(">>> startInvokeTask()\n");
+	debug(">>> Signal::startInvokeTask()\n");
 	bool bRet = system_os_task(taskInvokeSlot, PRIORITY_OF_PROCESSING_QUEUED_SIGNALS, g_eventQueue, MAX_NR_OF_QUEUED_SIGNALS);
-	debug("<<< startInvokeTask() returns %s\n", bRet ? "true":"false");
+	debug("<<< Signal::startInvokeTask() returns %s\n", bRet ? "true":"false");
 	return bRet;
 }
 
 bool Signal::invokeSlotQueued(FastDelegate1<void*> functionSlot, void* pParameter)
 {
-	debug(">>> invokeSlotQueued(), time: %d\n", system_get_time());
+	debug(">>> Signal::invokeSlotQueued()\n");
 
 	bool bRet = false;
 	int i = 0;
@@ -145,15 +187,15 @@ bool Signal::invokeSlotQueued(FastDelegate1<void*> functionSlot, void* pParamete
 
 		if (false == bRet)
 		{
-		   printError("ERROR: invokeSlotQueued couldn't post event. Event queue too small?\n");
+		   printError("ERROR: Signal::invokeSlotQueued couldn't post event. Event queue too small?\n");
 		}
 	}
 	else
 	{
-		printError("ERROR: invokeSlotQueued couldn't post event. Invoke data array too small?\n");
+		printError("ERROR: Signal::invokeSlotQueued couldn't post event. Invoke data array too small?\n");
 	}
 
-	debug("<<< invokeSlotQueued() returns %s\n", bRet ? "true":"false");
+	debug("<<< Signal::invokeSlotQueued() returns %s\n", bRet ? "true":"false");
 
 	return bRet;
 }

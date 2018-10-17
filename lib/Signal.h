@@ -22,6 +22,11 @@
 /* This file is from https://github.com/dreamcat4/FastDelegate
    I had to remove checking _MSC_VER, otherwise the ESP8266 compiler fails.
 */
+extern "C"
+{
+  #include <osapi.h>
+}
+
 #include "FastDelegate.h"
 
 namespace Esp8266Base
