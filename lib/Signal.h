@@ -19,6 +19,7 @@
 /* *************     End configuration settings           ******************* */
 
 
+
 /* This file is from https://github.com/dreamcat4/FastDelegate
    I had to remove checking _MSC_VER, otherwise the ESP8266 compiler fails.
 */

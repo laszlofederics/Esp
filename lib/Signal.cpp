@@ -15,17 +15,9 @@ extern "C" {
   #include <user_interface.h>
   #include <osapi.h>
   #include <mem.h>
-  #include "ets_decl.h"
 }
 
-#ifdef ENABLE_DEBUG
-  #define debug ets_uart_printf
-#else
-  #define debug
-#endif
-
-#define printError ets_uart_printf
-
+#include "debug.h"
 
 Signal::SignalSlotConnection Signal::s_listConnections[MAX_NR_OF_SIGNAL_SLOT_CONNECTIONS];
 bool Signal::s_bTaskInvokeSlotIsStarted = false;

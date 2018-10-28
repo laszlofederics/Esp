@@ -8,12 +8,17 @@ void ICACHE_FLASH_ATTR global_timer_callback(void * args)
 	{
 		Timer* p = (Timer*)args;
 		p->timeOut.emit(NULL);
+		if (p->getUserSignal() != NULL)
+		{
+			p->getUserSignal()->emit(NULL);
+		}
 	}
 }
 
 
-void ICACHE_FLASH_ATTR Timer::start(int ms, bool bRepeat)
+void ICACHE_FLASH_ATTR Timer::start(int ms, bool bRepeat, Signal* pSignal)
 {
+	m_pSignal = pSignal;
 	os_timer_disarm(&m_osTimer);
 	os_timer_setfn(&m_osTimer, global_timer_callback, this);
 	os_timer_arm(&m_osTimer, ms, bRepeat);

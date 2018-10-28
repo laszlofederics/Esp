@@ -23,20 +23,11 @@ extern "C" {
   #include <osapi.h>
   #include <mem.h>
   #include <string.h>
-  #include "ets_decl.h"
 }
 
+#include "debug.h"
+
 using namespace Esp8266Base;
-
-#ifdef ENABLE_DEBUG
-  #define debug ets_uart_printf
-#else
-  #define debug
-#endif
-
-#define print ets_uart_printf
-
-
 
 ICACHE_FLASH_ATTR EspWifi::EspNowMessage::EspNowMessage(uint8_t *mac, char *data)
 {

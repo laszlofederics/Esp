@@ -31,14 +31,14 @@ ICACHE_FLASH_ATTR EspNowUartGateway::EspNowUartGateway()
 void ICACHE_FLASH_ATTR EspNowUartGateway::toUart1(const char* msg)
 {
 	os_printf("%c%s%c", '\0', msg, '\0');
-
-	m_timerStillAlive.start(IM_STILL_ALIVE_TIMEOUT*1000);
 }
 
 
 void ICACHE_FLASH_ATTR EspNowUartGateway::sendImStillAlive(void*)
 {
 	toUart1(IM_STILL_ALIVE_TEXT);
+
+	m_timerStillAlive.start(IM_STILL_ALIVE_TIMEOUT*1000);
 }
 
 
